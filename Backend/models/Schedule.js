@@ -28,6 +28,10 @@ const scheduleSchema = new mongoose.Schema({
   enseignant: {
     type: String,
     required: true
+  },
+  salle: {
+    type: String,
+    required: true
   }
 });
 

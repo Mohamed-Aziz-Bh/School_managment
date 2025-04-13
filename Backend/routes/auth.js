@@ -45,7 +45,10 @@ res.json({
         _id: user._id,
         username: user.username,
         email: user.email,
-        role: user.role
+        role: user.role,
+        ...(user.role === 'etudiant' && { niveau: user.niveau, groupe: user.groupe, image: user.image }),
+        ...(user.role === 'enseignant' && { matieres: user.matieres, image: user.image }),
+        ...(user.role === 'parent' && { nombreEnfants: user.nombreEnfants, enfants: user.enfants })
     } 
 });
 } catch (err) {
@@ -74,6 +77,20 @@ router.get('/users/:username', async (req, res) => {
         res.status(500).json({ message: 'Error fetching user', error: err.message });
     }
 });
+
+// GET user by ID
+router.get('/users/:id', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching user', error: err.message });
+    }
+});
+
 // Modify user
 router.put('/users/:id', async (req, res) => {
     try {
@@ -129,4 +146,15 @@ router.delete('/users/:id', async (req, res) => {
         res.status(500).json({ message: 'Error deleting user', error: err.message });
     }
 });
+
+// Route pour récupérer tous les enseignants
+router.get('/enseignants', async (req, res) => {
+    try {
+      const enseignants = await User.find({ role: 'enseignant' });
+      res.json(enseignants);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+  
 module.exports = router;

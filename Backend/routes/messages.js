@@ -58,4 +58,48 @@ router.post('/', auth, isAdmin, async (req, res) => {
   }
 });
 
+// GET : Récupérer tous les messages
+router.get('/', auth, isAdmin, async (req, res) => {
+  try {
+    const messages = await Message.find().sort({ createdAt: -1 });
+    res.status(200).json(messages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET : Récupérer les messages par cible (target)
+router.get('/target/:target', auth, isAdmin, async (req, res) => {
+  try {
+    const { target } = req.params;
+    const messages = await Message.find({ target }).sort({ createdAt: -1 });
+    res.status(200).json(messages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET : Récupérer les messages pour les enseignants
+router.get('/for-teachers', auth, async (req, res) => {
+  try {
+    // Vérifier si l'utilisateur est un enseignant
+    if (req.user.role !== 'enseignant') {
+      return res.status(403).json({ message: 'Accès non autorisé' });
+    }
+    
+    // Récupérer les messages destinés aux enseignants ou à tous
+    const messages = await Message.find({
+      $or: [
+        { target: 'enseignants' },
+        { target: 'tous' }
+      ]
+    }).sort({ date: -1 });
+    
+    res.status(200).json(messages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
 module.exports = router;

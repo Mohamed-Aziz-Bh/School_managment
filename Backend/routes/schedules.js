@@ -13,9 +13,9 @@ const isAdmin = (req, res, next) => {
 // Route accessible uniquement à l'admin
 router.post('/', auth, isAdmin, async (req, res) => {
     try {
-        const { day, start_time, end_time, groupe, niveau, matiere, enseignant } = req.body;
+        const { day, start_time, end_time, groupe, niveau, matiere, enseignant, salle } = req.body;
     
-        const schedule = new Schedule({ day, start_time, end_time, groupe, niveau, matiere, enseignant });
+        const schedule = new Schedule({ day, start_time, end_time, groupe, niveau, matiere, enseignant, salle });
         await schedule.save();
     
         res.status(201).json({ message: 'Emploi du temps créé avec succès', schedule });

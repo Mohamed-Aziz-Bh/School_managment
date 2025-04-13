@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 const app = express();
 // Middlewares
@@ -21,6 +22,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/cours', coursRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/message', messageRoutes);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // Start Server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
