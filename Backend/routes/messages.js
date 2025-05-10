@@ -101,5 +101,51 @@ router.get('/for-teachers', auth, async (req, res) => {
   }
 });
 
+router.get('/for-students', auth, async (req, res) => {
+  try {
+    // Vérifier si l'utilisateur est un etudiant
+    if (req.user.role !== 'etudiant') {
+      return res.status(403).json({ message: 'Accès non autorisé' });
+    }
+    
+    // Récupérer les messages destinés aux etudiants ou à tous
+    const messages = await Message.find({
+      $or: [
+        { target: 'etudiants' },
+        { target: 'tous' }
+      ]
+    }).sort({ date: -1 });
+    
+    res.status(200).json(messages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+
+// GET: Récupérer les messages pour les parents
+router.get('/for-parents', auth, async (req, res) => {
+  try {
+    // Vérifier si l'utilisateur est un parent
+    if (req.user.role !== 'parent') {
+      return res.status(403).json({ message: 'Accès refusé: parent uniquement' });
+    }
+    
+    // Récupérer les messages destinés à tous les utilisateurs ou spécifiquement aux parents
+    const messages = await Message.find({
+      $or: [
+        { target: 'tous' },
+        { target: 'parent' }
+      ]
+    }).sort({ createdAt: -1 });
+    
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
 
 module.exports = router;

@@ -1,21 +1,43 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
+import api from './api';
 
-const ProtectedRoute = ({ allowedRoles }) => {
-  // Récupérer les informations de l'utilisateur depuis localStorage
-  const user = JSON.parse(localStorage.getItem('user'));
-  const token = localStorage.getItem('token');
+const ProtectedRoute = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
   
-  // Vérifier si l'utilisateur est connecté et a le rôle autorisé
-  const isAuthorized = token && user && allowedRoles.includes(user.role);
+  useEffect(() => {
+    const verifyAuth = async () => {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
+      
+      try {
+        // Vérifier la validité du token avec le backend
+        await api.get('/auth/verify', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Token invalide:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setIsAuthenticated(false);
+      }
+    };
+    
+    verifyAuth();
+  }, []);
   
-  // Si l'utilisateur n'est pas autorisé, rediriger vers la page de connexion
-  if (!isAuthorized) {
-    return <Navigate to="/login" replace />;
+  if (isAuthenticated === null) {
+    // Afficher un écran de chargement pendant la vérification
+    return <div>Chargement...</div>;
   }
   
-  // Si l'utilisateur est autorisé, afficher les composants enfants
-  return <Outlet />;
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
 };
 
 export default ProtectedRoute;

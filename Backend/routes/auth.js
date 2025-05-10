@@ -38,7 +38,7 @@ if (!user) return res.status(404).json({ message: 'User not found' });
 const isMatch = await user.comparePassword(password);
 if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn:
-'1h' });
+'6h' });
 res.json({ 
     token,
     user: {
@@ -46,6 +46,7 @@ res.json({
         username: user.username,
         email: user.email,
         role: user.role,
+        actif: user.actif,
         ...(user.role === 'etudiant' && { niveau: user.niveau, groupe: user.groupe, image: user.image }),
         ...(user.role === 'enseignant' && { matieres: user.matieres, image: user.image }),
         ...(user.role === 'parent' && { nombreEnfants: user.nombreEnfants, enfants: user.enfants })
@@ -150,11 +151,121 @@ router.delete('/users/:id', async (req, res) => {
 // Route pour récupérer tous les enseignants
 router.get('/enseignants', async (req, res) => {
     try {
-      const enseignants = await User.find({ role: 'enseignant' });
+      const enseignants = await User.find({ role: 'enseignant',actif: true });
       res.json(enseignants);
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
+});
+
+// Route pour activer/désactiver un utilisateur (admin seulement)
+router.put('/users/:id/toggle-status', async (req, res) => {
+    try {
+      // Vérifier si l'utilisateur est un admin
+      //if (req.user && req.user.role !== 'admin') {
+        //return res.status(403).json({ message: 'Accès refusé: admin uniquement' });
+      //}
+      
+      const { actif } = req.body;
+      
+      // Trouver l'utilisateur
+      const user = await User.findById(req.params.id);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      }
+      
+      // Mettre à jour le statut de l'utilisateur
+      user.actif = actif;
+      await user.save();
+      
+      res.status(200).json({ 
+        message: `Utilisateur ${actif ? 'activé' : 'désactivé'} avec succès`, 
+        user 
+      });
+    } catch (err) {
+      console.error('Erreur lors de la modification du statut:', err);
+      res.status(500).json({ message: err.message || 'Erreur serveur' });
+    }
   });
+  
+
+  // Route pour assigner un groupe à un étudiant (admin seulement)
+router.put('/users/:id/assign-group', async (req, res) => {
+    try {
+      console.log('User from token:', req.user); // Log pour déboguer
+      console.log('Request body:', req.body); // Log pour déboguer
+      
+      // Vérifier si l'utilisateur est un admin
+      //if (req.user.role !== 'admin') {
+        //return res.status(403).json({ message: 'Accès refusé: admin uniquement' });
+     // }
+      
+      const { groupe } = req.body;
+      console.log('Groupe à assigner:', groupe); // Log pour déboguer
+      
+      // Vérifier si le groupe est valide
+      if (!['A', 'B', 'C', 'D'].includes(groupe)) {
+        return res.status(400).json({ message: 'Groupe invalide' });
+      }
+      
+      // Trouver l'utilisateur et vérifier s'il est un étudiant
+      const user = await User.findById(req.params.id);
+      console.log('Utilisateur trouvé:', user ? user.username : 'non trouvé'); // Log pour déboguer
+      
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      }
+      
+      if (user.role !== 'etudiant') {
+        return res.status(400).json({ message: 'Seuls les étudiants peuvent être assignés à un groupe' });
+      }
+      
+      // Mettre à jour le groupe de l'étudiant
+      user.groupe = groupe;
+      await user.save();
+      
+      console.log('Groupe assigné avec succès'); // Log pour déboguer
+      res.status(200).json({ message: 'Groupe assigné avec succès', user });
+    } catch (err) {
+      console.error('Erreur lors de l\'assignation du groupe:', err);
+      res.status(500).json({ message: err.message || 'Erreur serveur' });
+    }
+  });
+
+  // Dans routes/auth.js
+router.get('/verify', (req, res) => {
+    res.status(200).json({ valid: true, user: req.user });
+  });
+  
+  
+
+
+// GET: Récupérer les informations d'un étudiant par son nom d'utilisateur
+router.get('/student/:username', async (req, res) => {
+    try {
+      const student = await User.findOne({ 
+        username: req.params.username,
+        role: 'etudiant'
+      });
+      
+      if (!student) {
+        return res.status(404).json({ message: 'Étudiant non trouvé' });
+      }
+      
+      res.json({
+        _id: student._id,
+        username: student.username,
+        email: student.email,
+        niveau: student.niveau,
+        groupe: student.groupe,
+        image: student.image
+      });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+  
+  
   
 module.exports = router;

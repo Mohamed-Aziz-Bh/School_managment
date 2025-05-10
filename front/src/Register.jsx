@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './styles/Register.css';
+import logo from './assets/images/School-Logo.png';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -119,6 +120,9 @@ const Register = () => {
 
   return (
     <div className="register-container">
+      <div className="site-logo">
+      <img src={logo} alt="Logo" className="logo" />
+      </div>
       <div className="register-form-container">
         <h2>Créer un compte</h2>
         
@@ -205,26 +209,9 @@ const Register = () => {
                   <option value="">Sélectionner un niveau</option>
                   <option value="4ème">4ème</option>
                   <option value="3ème">3ème</option>
-                  <option value="2nde">2ème</option>
+                  <option value="2ème">2ème</option>
                   <option value="1ère">1ère</option>
                   <option value="Terminale">Terminale</option>
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="groupe">Groupe</label>
-                <select
-                  id="groupe"
-                  name="groupe"
-                  value={formData.groupe}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">Sélectionner un groupe</option>
-                  <option value="A">Groupe A</option>
-                  <option value="B">Groupe B</option>
-                  <option value="C">Groupe C</option>
-                  <option value="D">Groupe D</option>
                 </select>
               </div>
               

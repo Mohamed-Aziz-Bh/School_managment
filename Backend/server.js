@@ -17,11 +17,15 @@ mongoose
 const authRoutes = require('./routes/auth');
 const coursRoutes = require('./routes/cours');
 const scheduleRoutes = require('./routes/schedules');
-const messageRoutes = require('./routes/messages')
+const messageRoutes = require('./routes/messages');
+const notesRoutes = require('./routes/notes');
+const absencesRoutes = require('./routes/absences');
 app.use('/api/auth', authRoutes);
 app.use('/api/cours', coursRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/message', messageRoutes);
+app.use('/api/notes', notesRoutes);
+app.use('/api/absences', absencesRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // Start Server
 const PORT = process.env.PORT || 5001;

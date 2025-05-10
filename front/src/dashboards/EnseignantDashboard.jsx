@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FaUser, FaBook, FaCalendarAlt, FaEnvelope, FaSignOutAlt, FaPlus, FaEdit, FaTrash, FaFilePdf, FaGraduationCap } from 'react-icons/fa';
+import { FaUser, FaBook, FaCalendarAlt, FaEnvelope, FaSignOutAlt, FaPlus, FaEdit, FaTrash, FaFilePdf, FaGraduationCap, FaUserGraduate, FaClipboardList, FaUserClock } from 'react-icons/fa';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import api from '../api';
 import '../styles/EnseignantDashboard.css';
+import { isTimeInSlot } from '../utils/timeUtils';
 
 const EnseignantDashboard = () => {
   // État utilisateur
@@ -15,7 +16,7 @@ const EnseignantDashboard = () => {
   const [activeTab, setActiveTab] = useState('profile');
 
   // États pour la section profil
-  const [profileFormData, setProfileFormData] = useState({
+  /*const [profileFormData, setProfileFormData] = useState({
     username: '',
     email: '',
     matieres: '',
@@ -24,7 +25,21 @@ const EnseignantDashboard = () => {
     confirmPassword: ''
   });
   const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
-  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);*/
+
+  // États pour la gestion du formulaire de profil
+const [showProfileForm, setShowProfileForm] = useState(false);
+const [profileFormData, setProfileFormData] = useState({
+  username: '',
+  email: '',
+  matieres: '',
+  image: '',
+  password: '',
+  confirmPassword: ''
+});
+const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
+const [profileLoading, setProfileLoading] = useState(false);
+
 
   // États pour la section cours
   const [courses, setCourses] = useState([]); // Renommé de cours à courses pour correspondre au JSX
@@ -41,6 +56,7 @@ const EnseignantDashboard = () => {
   });
   const [coursMessage, setCoursMessage] = useState({ type: '', text: '' });
   const [coursSubmitLoading, setCoursSubmitLoading] = useState(false);
+  const [enseignantsLoading, setEnseignantLoading] = useState(true);
 
   // États pour la section emploi du temps
   const [schedules, setSchedules] = useState([]);
@@ -66,6 +82,37 @@ const EnseignantDashboard = () => {
     target: '',
     image: ''
   });
+
+  const [activeSubTab, setActiveSubTab] = useState('notes');
+  const [activeGestionTab, setActiveGestionTab] = useState('notes');
+const [notes, setNotes] = useState([]);
+const [absences, setAbsences] = useState([]);
+const [selectedNiveau, setSelectedNiveau] = useState('');
+const [selectedGroupe, setSelectedGroupe] = useState('');
+const [etudiants, setEtudiants] = useState([]);
+const [showAddNoteForm, setShowAddNoteForm] = useState(false);
+const [showAddAbsenceForm, setShowAddAbsenceForm] = useState(false);
+const [currentNote, setCurrentNote] = useState(null);
+const [currentAbsence, setCurrentAbsence] = useState(null);
+const [newNote, setNewNote] = useState({
+  etudiant: '',
+  matiere: userData?.matieres || '',
+  valeur: '',
+  type: 'devoir',
+  titre: '',
+  commentaire: '',
+  niveau: '',
+  groupe: ''
+});
+const [newAbsence, setNewAbsence] = useState({
+  etudiant: '',
+  matiere: userData?.matieres || '',
+  date: new Date().toISOString().split('T')[0],
+  duree: 1,
+  motif: '',
+  niveau: '',
+  groupe: ''
+});
 
   // Chargement initial des données utilisateur
   useEffect(() => {
@@ -104,26 +151,27 @@ const EnseignantDashboard = () => {
       fetchCourses();
       fetchSchedules();
       fetchMessages();
+      fetchEnseignants();
     }
   }, [userData]);
-  const fetchEnseignants = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5001/api/auth/enseignants', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setEnseignants(response.data);
-    } catch (error) {
-      console.error('Erreur lors de la récupération des enseignants:', error);
-      toast.error('Erreur lors du chargement des enseignants');
-    }
-  };
+
+  // Fonction pour récupérer la liste des enseignants
+    const fetchEnseignants = async () => {
+      try {
+        setEnseignantLoading(true);
+        const response = await api.get('/auth/enseignants');
+        setEnseignants(response.data);
+      } catch (error) {
+        console.error('Erreur lors de la récupération des enseignants:', error);
+        toast.error('Erreur lors du chargement des enseignants');
+      }
+    };
 
   // Fonction pour récupérer les cours
   const fetchCourses = async () => { // Renommé de fetchCours à fetchCourses
     try {
       setCoursLoading(true);
-      const response = await api.get(`/cours/enseignant/${userData.username}`);
+      const response = await api.get(`/cours/enseignant/${userData._id}`);
       setCourses(response.data);
       setCoursError(null);
     } catch (err) {
@@ -139,7 +187,20 @@ const EnseignantDashboard = () => {
     try {
       setScheduleLoading(true);
       const response = await api.get(`/schedule/enseignant/${userData._id}`);
-      setSchedules(response.data);
+      // Adapter le format des données reçues pour correspondre à notre format d'affichage
+      const formattedSchedules = response.data.map(item => ({
+        _id: item._id,
+        jour: item.day,
+        heureDebut: item.start_time,
+        heureFin: item.end_time,
+        titre: item.matiere,
+        niveau: item.niveau,
+        groupe: item.groupe,
+        enseignant: item.enseignant,
+        salle: item.salle || 'Non spécifiée'
+      }));
+      
+      setSchedules(formattedSchedules);
       setScheduleError(null);
     } catch (err) {
       setScheduleError(err.response?.data?.message || 'Erreur lors du chargement de l\'emploi du temps');
@@ -162,113 +223,165 @@ const EnseignantDashboard = () => {
     }
   };
 
-  // Gestion du profil
-  const handleProfileChange = (e) => {
-    const { name, value } = e.target;
-    setProfileFormData(prev => ({ ...prev, [name]: value }));
-  };
+// Fonction pour gérer les changements dans le formulaire
+const handleProfileChange = (e) => {
+  const { name, value } = e.target;
+  setProfileFormData(prev => ({ ...prev, [name]: value }));
+};
 
-  const handleProfileSubmit = async (e) => {
-    e.preventDefault();
-    setProfileLoading(true);
-    setProfileMessage({ type: '', text: '' });
-    // Vérification des mots de passe
-    if (profileFormData.password && profileFormData.password !== profileFormData.confirmPassword) {
-      setProfileMessage({ type: 'danger', text: 'Les mots de passe ne correspondent pas' });
-      setProfileLoading(false);
-      return;
+// Fonction pour gérer la soumission du formulaire
+const handleProfileSubmit = async (e) => {
+  e.preventDefault();
+  setProfileLoading(true);
+  setProfileMessage({ type: '', text: '' });
+  
+  // Vérification des mots de passe
+  if (profileFormData.password && profileFormData.password !== profileFormData.confirmPassword) {
+    setProfileMessage({ type: 'danger', text: 'Les mots de passe ne correspondent pas' });
+    setProfileLoading(false);
+    return;
+  }
+  
+  try {
+    // Préparer les données à envoyer
+    const dataToUpdate = { ...profileFormData };
+    
+    // Ne pas envoyer le mot de passe s'il est vide
+    if (!dataToUpdate.password || dataToUpdate.password.trim() === '') {
+      delete dataToUpdate.password;
     }
-    try {
-      // Ne pas envoyer le mot de passe s'il est vide
-      const dataToUpdate = { ...profileFormData };
-      if (!dataToUpdate.password) {
-        delete dataToUpdate.password;
-        delete dataToUpdate.confirmPassword;
-      } else {
-        delete dataToUpdate.confirmPassword;
-      }
-      // Ne pas permettre la modification du rôle
-      delete dataToUpdate.role;
-      const response = await api.put(`/auth/users/${userData._id}`, dataToUpdate);
-      
-      setUserData(response.data);
-      setProfileMessage({ type: 'success', text: 'Profil mis à jour avec succès!' });
-      
-      // Mettre à jour les informations dans le localStorage
-      const currentUser = JSON.parse(localStorage.getItem('user'));
-      localStorage.setItem('user', JSON.stringify({
-        ...currentUser,
-        username: response.data.username,
-        email: response.data.email
-      }));
-      
-    } catch (error) {
+    
+    // Toujours supprimer confirmPassword car le backend ne le traite pas
+    delete dataToUpdate.confirmPassword;
+    
+    // Ne pas permettre la modification du rôle
+    delete dataToUpdate.role;
+    
+    console.log('Données à envoyer:', dataToUpdate);
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Token d\'authentification non trouvé');
+    }
+    
+    // Utiliser l'instance API avec la bonne URL
+    const response = await api.put(`/auth/users/${userData._id}`, dataToUpdate, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    console.log('Réponse du serveur:', response.data);
+    
+    // Mettre à jour les données utilisateur localement
+    setUserData(prev => ({ ...prev, ...response.data }));
+    
+    // Mettre à jour les informations dans le localStorage
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    const updatedUser = {
+      ...currentUser,
+      username: response.data.username || currentUser.username,
+      email: response.data.email || currentUser.email,
+      matieres: response.data.matieres || currentUser.matieres,
+      image: response.data.image || currentUser.image
+    };
+    
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    
+    setProfileMessage({ type: 'success', text: 'Profil mis à jour avec succès!' });
+    
+    // Fermer le popup après une mise à jour réussie
+    setTimeout(() => {
+      setShowProfileForm(false);
+      setProfileMessage({ type: '', text: '' });
+    }, 2000);
+    
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du profil:', error);
+    
+    if (error.response) {
       setProfileMessage({
         type: 'danger',
-        text: error.response?.data?.message || 'Erreur lors de la mise à jour du profil'
+        text: error.response.data.message || `Erreur ${error.response.status}: Échec de la mise à jour du profil`
       });
-    } finally {
-      setProfileLoading(false);
+    } else {
+      setProfileMessage({
+        type: 'danger',
+        text: error.message || 'Erreur lors de la mise à jour du profil'
+      });
     }
-  };
+  } finally {
+    setProfileLoading(false);
+  }
+};
+
+
 
   // Gestion des cours
   const handleFileChange = (e) => {
     setNewCourse(prev => ({ ...prev, file: e.target.files[0] }));
   };
 
-  const handleAddCourse = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setCoursSubmitLoading(true);
+  
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('title', newCourse.title);
       formDataToSend.append('description', newCourse.description);
+      formDataToSend.append('matiere', newCourse.matiere);
       formDataToSend.append('niveau', newCourse.niveau);
-      formDataToSend.append('enseignant', userData.username);
-      
+      formDataToSend.append('enseignant', userData._id);
+  
       if (newCourse.file) {
         formDataToSend.append('file', newCourse.file);
       }
-      
-      await api.post('/cours', formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      
-      toast.success('Cours ajouté avec succès!');
-      
-      // Rafraîchir la liste des cours
+  
+      if (currentCours) {
+        // Mode édition
+        await api.put(`/cours/${currentCours._id}`, formDataToSend, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        toast.success('Cours modifié avec succès !');
+      } else {
+        // Mode ajout
+        await api.post('/cours', formDataToSend, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        toast.success('Cours ajouté avec succès !');
+      }
+  
       fetchCourses();
-      
-      // Fermer le formulaire
       setShowAddCourseForm(false);
-      
-      // Réinitialiser le formulaire
       setNewCourse({
         title: '',
         description: '',
+        matiere: '',
         niveau: '',
+        enseignant: userData._id,
         file: null
       });
+      setCurrentCours(null);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Erreur lors de l\'ajout du cours');
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'opération');
     } finally {
       setCoursSubmitLoading(false);
     }
   };
+  
 
   const handleEditCourse = (course) => {
-    setCurrentCours(course);
+    setCurrentCours(course); // indique qu'on modifie
     setNewCourse({
       title: course.title,
       description: course.description,
+      matiere: course.matiere,
       niveau: course.niveau,
-      file: null
+      enseignant: course.enseignant || userData._id,
+      file: null // on ne préremplit pas le fichier
     });
     setShowAddCourseForm(true);
   };
+  
 
   const handleDeleteCourse = async (id) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce cours?')) {
@@ -283,12 +396,192 @@ const EnseignantDashboard = () => {
     }
   };
 
-  // Fonction pour vérifier si un cours est dans un créneau horaire
-  const isTimeInSlot = (courseStart, courseEnd, slotStart, slotEnd) => {
-    return (courseStart >= slotStart && courseStart < slotEnd) || 
-           (courseEnd > slotStart && courseEnd <= slotEnd) ||
-           (courseStart <= slotStart && courseEnd >= slotEnd);
-  };
+
+  // Fonction pour récupérer les étudiants d'un niveau et groupe
+const fetchEtudiants = async () => {
+  if (!selectedNiveau || !selectedGroupe) return;
+  
+  try {
+    const response = await api.get(`/notes/etudiants/niveau/${selectedNiveau}/groupe/${selectedGroupe}`);
+    setEtudiants(response.data);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des étudiants:', error);
+    toast.error('Erreur lors du chargement des étudiants');
+  }
+};
+
+// Fonction pour récupérer les notes
+const fetchNotes = async () => {
+  if (!selectedNiveau || !selectedGroupe) return;
+  
+  try {
+    const response = await api.get(`/notes/niveau/${selectedNiveau}/groupe/${selectedGroupe}`);
+    setNotes(response.data);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des notes:', error);
+    toast.error('Erreur lors du chargement des notes');
+  }
+};
+
+// Fonction pour récupérer les absences
+const fetchAbsences = async () => {
+  if (!selectedNiveau || !selectedGroupe) return;
+  
+  try {
+    const response = await api.get(`/absences/niveau/${selectedNiveau}/groupe/${selectedGroupe}`);
+    setAbsences(response.data);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des absences:', error);
+    toast.error('Erreur lors du chargement des absences');
+  }
+};
+
+// Fonction pour ajouter une note
+const handleAddNote = async (e) => {
+  e.preventDefault();
+  try {
+    const noteData = {
+      ...newNote,
+      niveau: selectedNiveau,
+      groupe: selectedGroupe,
+      matiere: userData.matieres
+    };
+    
+    if (currentNote) {
+      // Mode édition
+      await api.put(`/notes/${currentNote._id}`, noteData);
+      toast.success('Note modifiée avec succès');
+    } else {
+      // Mode ajout
+      await api.post('/notes', noteData);
+      toast.success('Note ajoutée avec succès');
+    }
+    
+    // Réinitialiser le formulaire et rafraîchir les données
+    setNewNote({
+      etudiant: '',
+      matiere: userData.matieres,
+      valeur: '',
+      type: 'devoir',
+      titre: '',
+      commentaire: '',
+      niveau: '',
+      groupe: ''
+    });
+    setShowAddNoteForm(false);
+    setCurrentNote(null);
+    fetchNotes();
+  } catch (error) {
+    console.error('Erreur lors de l\'ajout/modification de la note:', error);
+    toast.error(error.response?.data?.message || 'Erreur lors de l\'opération');
+  }
+};
+
+// Fonction pour supprimer une note
+const handleDeleteNote = async (id) => {
+  if (window.confirm('Êtes-vous sûr de vouloir supprimer cette note?')) {
+    try {
+      await api.delete(`/notes/${id}`);
+      toast.success('Note supprimée avec succès');
+      fetchNotes();
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la note:', error);
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression');
+    }
+  }
+};
+
+// Fonction pour ajouter une absence
+const handleAddAbsence = async (e) => {
+  e.preventDefault();
+  try {
+    const absenceData = {
+      ...newAbsence,
+      niveau: selectedNiveau,
+      groupe: selectedGroupe,
+      matiere: userData.matieres
+    };
+    
+    if (currentAbsence) {
+      // Mode édition
+      await api.put(`/absences/${currentAbsence._id}`, absenceData);
+      toast.success('Absence modifiée avec succès');
+    } else {
+      // Mode ajout
+      await api.post('/absences', absenceData);
+      toast.success('Absence ajoutée avec succès');
+    }
+    
+    // Réinitialiser le formulaire et rafraîchir les données
+    setNewAbsence({
+      etudiant: '',
+      matiere: userData.matieres,
+      date: new Date().toISOString().split('T')[0],
+      duree: 1,
+      motif: '',
+      niveau: '',
+      groupe: ''
+    });
+    setShowAddAbsenceForm(false);
+    setCurrentAbsence(null);
+    fetchAbsences();
+  } catch (error) {
+    console.error('Erreur lors de l\'ajout/modification de l\'absence:', error);
+    toast.error(error.response?.data?.message || 'Erreur lors de l\'opération');
+  }
+};
+
+// Fonction pour supprimer une absence
+const handleDeleteAbsence = async (id) => {
+  if (window.confirm('Êtes-vous sûr de vouloir supprimer cette absence?')) {
+    try {
+      await api.delete(`/absences/${id}`);
+      toast.success('Absence supprimée avec succès');
+      fetchAbsences();
+    } catch (error) {
+      console.error('Erreur lors de la suppression de l\'absence:', error);
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression');
+    }
+  }
+};
+
+// Fonction pour éditer une note
+const handleEditNote = (note) => {
+  setCurrentNote(note);
+  setNewNote({
+    etudiant: note.etudiant._id,
+    matiere: note.matiere,
+    valeur: note.valeur,
+    type: note.type,
+    titre: note.titre,
+    commentaire: note.commentaire
+  });
+  setShowAddNoteForm(true);
+};
+
+// Fonction pour éditer une absence
+const handleEditAbsence = (absence) => {
+  setCurrentAbsence(absence);
+  setNewAbsence({
+    etudiant: absence.etudiant._id,
+    matiere: absence.matiere,
+    date: new Date(absence.date).toISOString().split('T')[0],
+    duree: absence.duree,
+    motif: absence.motif,
+    justifiee: absence.justifiee
+  });
+  setShowAddAbsenceForm(true);
+};
+
+// Effet pour charger les étudiants, notes et absences quand le niveau et le groupe changent
+useEffect(() => {
+  if (activeTab === 'gestion' && selectedNiveau && selectedGroupe) {
+    fetchEtudiants();
+    fetchNotes();
+    fetchAbsences();
+  }
+}, [activeTab, selectedNiveau, selectedGroupe]);
+
 
   // Déconnexion
   const handleLogout = () => {
@@ -334,6 +627,12 @@ const EnseignantDashboard = () => {
             <FaCalendarAlt className="icon" /> Emploi du Temps
           </li>
           <li
+            className={activeTab === 'gestion' ? 'active' : ''}
+            onClick={() => setActiveTab('gestion')}
+          >
+            <FaClipboardList className="icon" /> Gestion Classe
+          </li>
+          <li
             className={activeTab === 'messages' ? 'active' : ''}
             onClick={() => setActiveTab('messages')}
           >
@@ -350,58 +649,183 @@ const EnseignantDashboard = () => {
         <ToastContainer position="top-right" autoClose={3000} />
         
         {activeTab === 'profile' && (
-          <div className="section">
-            <div className="section-header">
-              <h2>Mon Profil</h2>
+  <div className="section">
+    <div className="section-header">
+      <h2>Mon Profil</h2>
+    </div>
+    
+    {loading ? (
+      <div className="loading">Chargement...</div>
+    ) : (
+      <div className="profile-section">
+        <div className="profile-info">
+          {userData?.image ? (
+            <img src={userData.image} alt="Profile" className="profile-image" />
+          ) : (
+            <div className="profile-avatar">
+              <span>{userData?.username ? userData.username.charAt(0).toUpperCase() : 'E'}</span>
+            </div>
+          )}
+          
+          <div className="info-item">
+            <div className="info-label">Nom d'utilisateur</div>
+            <div className="info-value">{userData?.username}</div>
+          </div>
+          
+          <div className="info-item">
+            <div className="info-label">Email</div>
+            <div className="info-value">{userData?.email}</div>
+          </div>
+          
+          <div className="info-item">
+            <div className="info-label">Rôle</div>
+            <div className="info-value">
+              <span className="role-badge enseignant">{userData?.role}</span>
+            </div>
+          </div>
+          
+          <div className="info-item">
+            <div className="info-label">Matières enseignées</div>
+            <div className="info-value">{userData?.matieres || 'Non spécifié'}</div>
+          </div>
+          
+          {/* Bouton pour modifier le profil */}
+          <button 
+            className="edit-profile-btn" 
+            onClick={() => setShowProfileForm(true)}
+          >
+            <FaEdit className="icon-margin-right" /> Modifier mon profil
+          </button>
+        </div>
+      </div>
+    )}
+    
+    {/* Popup de modification de profil */}
+    {showProfileForm && (
+      <div className="profile-form-modal">
+        <div className="profile-form-content">
+          <h3>Modifier mon profil</h3>
+          
+          {profileMessage.text && (
+            <div className={`alert alert-${profileMessage.type}`}>
+              {profileMessage.text}
+            </div>
+          )}
+          
+          <form onSubmit={handleProfileSubmit}>
+            <div className="form-group">
+              <label>Nom d'utilisateur</label>
+              <input
+                type="text"
+                name="username"
+                value={profileFormData.username}
+                onChange={handleProfileChange}
+                required
+              />
             </div>
             
-            {loading ? (
-              <div className="loading">Chargement...</div>
-            ) : (
-              <div className="profile-section">
-                <div className="profile-info">
-                  {userData?.image ? (
-                    <img src={userData.image} alt="Profile" className="profile-image" />
-                  ) : (
-                    <div className="profile-avatar">
-                      <span>{userData?.username ? userData.username.charAt(0).toUpperCase() : 'E'}</span>
-                    </div>
-                  )}
-                  
-                  <div className="info-item">
-                    <div className="info-label">Nom d'utilisateur</div>
-                    <div className="info-value">{userData?.username}</div>
-                  </div>
-                  
-                  <div className="info-item">
-                    <div className="info-label">Email</div>
-                    <div className="info-value">{userData?.email}</div>
-                  </div>
-                  
-                  <div className="info-item">
-                    <div className="info-label">Rôle</div>
-                    <div className="info-value">
-                      <span className="role-badge enseignant">Enseignant</span>
-                    </div>
-                  </div>
-                  
-                  <div className="info-item">
-                    <div className="info-label">Matières enseignées</div>
-                    <div className="info-value">{userData?.matieres || 'Non spécifié'}</div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                name="email"
+                value={profileFormData.email}
+                onChange={handleProfileChange}
+                required
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Matières enseignées</label>
+              <input
+                type="text"
+                name="matieres"
+                value={profileFormData.matieres}
+                onChange={handleProfileChange}
+                placeholder="Ex: Mathématiques, Physique"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Image de profil (URL)</label>
+              <input
+                type="text"
+                name="image"
+                value={profileFormData.image || ''}
+                onChange={handleProfileChange}
+                placeholder="https://exemple.com/image.jpg"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Nouveau mot de passe (laisser vide pour ne pas changer)</label>
+              <input
+                type="password"
+                name="password"
+                value={profileFormData.password}
+                onChange={handleProfileChange}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Confirmer le mot de passe</label>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={profileFormData.confirmPassword}
+                onChange={handleProfileChange}
+              />
+            </div>
+            
+            <div className="form-actions">
+              <button 
+                type="submit" 
+                className="save-btn" 
+                disabled={profileLoading}
+              >
+                {profileLoading ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+              <button 
+                type="button" 
+                className="cancel-btn" 
+                onClick={() => {
+                  setShowProfileForm(false);
+                  setProfileMessage({ type: '', text: '' });
+                }}
+              >
+                Annuler
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
         
         {activeTab === 'cours' && (
           <div className="section">
             <div className="section-header">
               <h2>Mes Cours</h2>
-              <button className="add-btn" onClick={() => setShowAddCourseForm(true)}>
+              <button
+                className="add-btn"
+                onClick={() => {
+                 setCurrentCours(null); // indique qu'on ajoute
+                 setNewCourse({
+                   title: '',
+                   description: '',
+                   matiere: '',
+                   niveau: '',
+                   enseignant: '',
+                   file: null
+                 });
+                 setShowAddCourseForm(true);
+                }}
+              >
                 <FaPlus /> Ajouter un cours
               </button>
+
             </div>
             
             {loading ? (
@@ -409,85 +833,88 @@ const EnseignantDashboard = () => {
             ) : (
               <>
                 {showAddCourseForm && (
-                  <div className="schedule-form-modal">
-                    <div className="schedule-form-content">
-                      <h3>Ajouter un nouveau cours</h3>
-                      <form onSubmit={handleAddCourse}>
-                        <div className="form-group">
-                          <label>Titre</label>
-                          <input
-                            type="text"
-                            value={newCourse.title || ''}
-                            onChange={(e) => setNewCourse({...newCourse, title: e.target.value})}
-                            required
-                          />
-                        </div>
-                        
-                        <div className="form-group">
-                          <label>Description</label>
-                          <textarea
-                            value={newCourse.description || ''}
-                            onChange={(e) => setNewCourse({...newCourse, description: e.target.value})}
-                            required
-                            rows="4"
-                          />
-                        </div>
-                        
-                        <div className="form-group">
-                          <label>Niveau</label>
-                          <select
-                            value={newCourse.niveau || ''}
-                            onChange={(e) => setNewCourse({...newCourse, niveau: e.target.value})}
-                            required
-                          >
-                            <option value="">Sélectionner un niveau</option>
-                            <option value="4ème">4ème</option>
-                            <option value="3ème">3ème</option>
-                            <option value="2nde">2nde</option>
-                            <option value="1ère">1ère</option>
-                            <option value="Terminale">Terminale</option>
-                          </select>
-                        </div>
-                        <div className="form-group">
-                          <label>Enseignant</label>
-                          <select
-                           value={newCourse.enseignant || ''}
-                           onChange={(e) => setNewCourse({...newCourse, enseignant: e.target.value})}
-                           required
-                          >
-                           <option value="">Sélectionner un enseignant</option>
-                             {enseignants.map(enseignant => (
-                                <option key={enseignant._id} value={enseignant._id}>
-                                 {enseignant.username}
-                                </option>
-                            ))}
-                         </select>
-                        </div>
-                        
-                        <div className="form-group">
-                          <label>Document du cours (PDF)</label>
-                          <input
-                            type="file"
-                            accept=".pdf,.doc,.docx,.ppt,.pptx,.odt"
-                            onChange={handleFileChange}
-                          />
-                        </div>
-                        
-                        <div className="form-actions">
-                          <button type="submit" className="save-btn">Ajouter</button>
-                          <button
-                            type="button"
-                            className="cancel-btn"
-                            onClick={() => setShowAddCourseForm(false)}
-                          >
-                            Annuler
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
-                
+  <div className="schedule-form-modal">
+    <div className="schedule-form-content">
+      <h3>{currentCours ? 'Modifier le cours' : 'Ajouter un nouveau cours'}</h3>
+
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label>Titre</label>
+          <input
+            type="text"
+            value={newCourse.title || ''}
+            onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Description</label>
+          <textarea
+            value={newCourse.description || ''}
+            onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
+            required
+            rows="4"
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Matière</label>
+          <input
+            type="text"
+            value={newCourse.matiere || ''}
+            onChange={(e) => setNewCourse({ ...newCourse, matiere: e.target.value })}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Niveau</label>
+          <select
+            value={newCourse.niveau || ''}
+            onChange={(e) => setNewCourse({ ...newCourse, niveau: e.target.value })}
+            required
+          >
+            <option value="">Sélectionner un niveau</option>
+            <option value="4ème">4ème</option>
+            <option value="3ème">3ème</option>
+            <option value="2ème">2ème</option>
+            <option value="1ère">1ère</option>
+            <option value="Terminale">Terminale</option>
+          </select>
+        </div>
+
+        
+
+        <div className="form-group">
+          <label>Document du cours (PDF, DOC, etc.)</label>
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx,.ppt,.pptx,.odt"
+            onChange={handleFileChange}
+          />
+        </div>
+
+        <div className="form-actions">
+          <button type="submit" className="save-btn">
+            {currentCours ? 'Enregistrer les modifications' : 'Ajouter'}
+          </button>
+          <button
+            type="button"
+            className="cancel-btn"
+            onClick={() => {
+              setShowAddCourseForm(false);
+              setCurrentCours(null);
+            }}
+          >
+            Annuler
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
                 <div className="cours-list">
                   {courses.length === 0 ? (
                     <div className="empty-state">
@@ -505,6 +932,7 @@ const EnseignantDashboard = () => {
                             <FaGraduationCap className="icon" />
                             <span>Niveau: {course.niveau || 'Non spécifié'}</span>
                           </div>
+                          <p className="cours-description">{course.matiere}</p>
                           <p className="cours-description">{course.description}</p>
                           <div className="cours-actions">
                             {course.file && (
@@ -579,7 +1007,7 @@ const EnseignantDashboard = () => {
                           <div className={`timetable-cell ${course ? 'has-course' : ''}`} key={day}>
                             {course && (
                               <div className="course-card">
-                                <div className="course-title">{course.title || course.matiere} console.log</div>
+                                <div className="course-title">{course.titre}</div>
                                 <div className="course-time">{course.heureDebut} - {course.heureFin}</div>
                                 <div className="course-room">Salle: {course.salle}</div>
                                 <div className="course-class">
@@ -597,6 +1025,400 @@ const EnseignantDashboard = () => {
             )}
           </div>
         )}
+
+{activeTab === 'gestion' && (
+  <div className="section">
+    <div className="section-header">
+      <h2>Gestion de Classe</h2>
+    </div>
+    
+    <div className="gestion-filters">
+      <div className="filter-group">
+        <label>Niveau:</label>
+        <select 
+          value={selectedNiveau} 
+          onChange={(e) => setSelectedNiveau(e.target.value)}
+        >
+          <option value="">Sélectionner un niveau</option>
+          <option value="4ème">4ème</option>
+          <option value="3ème">3ème</option>
+          <option value="2ème">2ème</option>
+          <option value="1ère">1ère</option>
+          <option value="Terminale">Terminale</option>
+        </select>
+      </div>
+      
+      <div className="filter-group">
+        <label>Groupe:</label>
+        <select 
+          value={selectedGroupe} 
+          onChange={(e) => setSelectedGroupe(e.target.value)}
+          disabled={!selectedNiveau}
+        >
+          <option value="">Sélectionner un groupe</option>
+          <option value="A">Groupe A</option>
+          <option value="B">Groupe B</option>
+          <option value="C">Groupe C</option>
+          <option value="D">Groupe D</option>
+        </select>
+      </div>
+    </div>
+    
+    {selectedNiveau && selectedGroupe ? (
+      <div className="gestion-content">
+        <div className="gestion-tabs">
+          <div 
+            className={`gestion-tab ${activeGestionTab === 'notes' ? 'active' : ''}`}
+            onClick={() => setActiveGestionTab('notes')}
+          >
+            <FaClipboardList className="icon" /> Notes
+          </div>
+          <div 
+            className={`gestion-tab ${activeGestionTab === 'absences' ? 'active' : ''}`}
+            onClick={() => setActiveGestionTab('absences')}
+          >
+            <FaUserClock className="icon" /> Absences
+          </div>
+        </div>
+        
+        {activeGestionTab === 'notes' && (
+          <div className="notes-section">
+            <div className="section-actions">
+              <button 
+                className="add-btn"
+                onClick={() => {
+                  setCurrentNote(null);
+                  setNewNote({
+                    etudiant: '',
+                    matiere: userData.matieres,
+                    valeur: '',
+                    type: 'devoir',
+                    titre: '',
+                    commentaire: '',
+                    niveau: selectedNiveau,
+                    groupe: selectedGroupe
+                  });
+                  setShowAddNoteForm(true);
+                }}
+              >
+                <FaPlus /> Ajouter une note
+              </button>
+            </div>
+            
+            {showAddNoteForm && (
+              <div className="form-modal">
+                <div className="form-content">
+                  <h3>{currentNote ? 'Modifier la note' : 'Ajouter une note'}</h3>
+                  <form onSubmit={handleAddNote}>
+                    <div className="form-group">
+                      <label>Étudiant</label>
+                      <select
+                        value={newNote.etudiant}
+                        onChange={(e) => setNewNote({...newNote, etudiant: e.target.value})}
+                        required
+                      >
+                        <option value="">Sélectionner un étudiant</option>
+                        {etudiants.map(etudiant => (
+                          <option key={etudiant._id} value={etudiant._id}>
+                            {etudiant.username}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="form-group">
+                      <label>Titre de l'évaluation</label>
+                      <input
+                        type="text"
+                        value={newNote.titre}
+                        onChange={(e) => setNewNote({...newNote, titre: e.target.value})}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <label>Type d'évaluation</label>
+                      <select
+                        value={newNote.type}
+                        onChange={(e) => setNewNote({...newNote, type: e.target.value})}
+                        required
+                      >
+                        <option value="devoir">Devoir</option>
+                        <option value="examen">Examen</option>
+                        <option value="controle">Contrôle</option>
+                        <option value="autre">Autre</option>
+                      </select>
+                    </div>
+                    
+                    <div className="form-group">
+                      <label>Note (sur 20)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="20"
+                        step="0.25"
+                        value={newNote.valeur}
+                        onChange={(e) => setNewNote({...newNote, valeur: e.target.value})}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <label>Commentaire</label>
+                      <textarea
+                        value={newNote.commentaire}
+                        onChange={(e) => setNewNote({...newNote, commentaire: e.target.value})}
+                        rows="3"
+                      />
+                    </div>
+                    
+                    <div className="form-actions">
+                      <button type="submit" className="save-btn">
+                        {currentNote ? 'Enregistrer les modifications' : 'Ajouter la note'}
+                      </button>
+                      <button 
+                        type="button" 
+                        className="cancel-btn" 
+                        onClick={() => {
+                          setShowAddNoteForm(false);
+                          setCurrentNote(null);
+                        }}
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+            
+            {notes.length === 0 ? (
+              <div className="empty-state">
+                <FaClipboardList size={48} />
+                <p>Aucune note enregistrée pour cette classe</p>
+              </div>
+            ) : (
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Étudiant</th>
+                      <th>Évaluation</th>
+                      <th>Type</th>
+                      <th>Note</th>
+                      <th>Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {notes.map(note => (
+                      <tr key={note._id}>
+                        <td>{note.etudiant.username}</td>
+                        <td>{note.titre}</td>
+                        <td>
+                          <span className={`badge ${note.type}`}>
+                            {note.type}
+                          </span>
+                        </td>
+                        <td className="note-value">{note.valeur}/20</td>
+                        <td>{new Date(note.date).toLocaleDateString('fr-FR')}</td>
+                        <td className="actions">
+                          <button 
+                            className="edit-btn-small" 
+                            onClick={() => handleEditNote(note)}
+                          >
+                            <FaEdit />
+                          </button>
+                          <button 
+                            className="delete-btn-small" 
+                            onClick={() => handleDeleteNote(note._id)}
+                          >
+                            <FaTrash />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {activeGestionTab === 'absences' && (
+          <div className="absences-section">
+            <div className="section-actions">
+              <button 
+                className="add-btn"
+                onClick={() => {
+                  setCurrentAbsence(null);
+                  setNewAbsence({
+                    etudiant: '',
+                    matiere: userData.matieres,
+                    date: new Date().toISOString().split('T')[0],
+                    duree: 1,
+                    motif: '',
+                    niveau: selectedNiveau,
+                    groupe: selectedGroupe
+                  });
+                  setShowAddAbsenceForm(true);
+                }}
+              >
+                <FaPlus /> Signaler une absence
+              </button>
+            </div>
+            
+            {showAddAbsenceForm && (
+              <div className="form-modal">
+                <div className="form-content">
+                  <h3>{currentAbsence ? 'Modifier l\'absence' : 'Signaler une absence'}</h3>
+                  <form onSubmit={handleAddAbsence}>
+                    <div className="form-group">
+                      <label>Étudiant</label>
+                      <select
+                        value={newAbsence.etudiant}
+                        onChange={(e) => setNewAbsence({...newAbsence, etudiant: e.target.value})}
+                        required
+                      >
+                        <option value="">Sélectionner un étudiant</option>
+                        {etudiants.map(etudiant => (
+                          <option key={etudiant._id} value={etudiant._id}>
+                            {etudiant.username}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="form-group">
+                      <label>Date</label>
+                      <input
+                        type="date"
+                        value={newAbsence.date}
+                        onChange={(e) => setNewAbsence({...newAbsence, date: e.target.value})}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <label>Durée (heures)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="8"
+                        value={newAbsence.duree}
+                        onChange={(e) => setNewAbsence({...newAbsence, duree: e.target.value})}
+                        required
+                      />
+                    </div>
+                    
+                    {currentAbsence && (
+                      <div className="form-group">
+                        <label>Justifiée</label>
+                        <div className="toggle-switch">
+                          <input
+                            type="checkbox"
+                            id="justifiee"
+                            checked={newAbsence.justifiee}
+                            onChange={(e) => setNewAbsence({...newAbsence, justifiee: e.target.checked})}
+                          />
+                          <label htmlFor="justifiee"></label>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="form-group">
+                      <label>Motif</label>
+                      <textarea
+                        value={newAbsence.motif}
+                        onChange={(e) => setNewAbsence({...newAbsence, motif: e.target.value})}
+                        rows="3"
+                      />
+                    </div>
+                    
+                    <div className="form-actions">
+                      <button type="submit" className="save-btn">
+                        {currentAbsence ? 'Enregistrer les modifications' : 'Signaler l\'absence'}
+                      </button>
+                      <button 
+                        type="button" 
+                        className="cancel-btn" 
+                        onClick={() => {
+                          setShowAddAbsenceForm(false);
+                          setCurrentAbsence(null);
+                        }}
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+            
+            {absences.length === 0 ? (
+              <div className="empty-state">
+                <FaUserClock size={48} />
+                <p>Aucune absence enregistrée pour cette classe</p>
+              </div>
+            ) : (
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Étudiant</th>
+                      <th>Date</th>
+                      <th>Durée</th>
+                      <th>Statut</th>
+                      <th>Motif</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {absences.map(absence => (
+                      <tr key={absence._id}>
+                        <td>{absence.etudiant.username}</td>
+                        <td>{new Date(absence.date).toLocaleDateString('fr-FR')}</td>
+                        <td>{absence.duree}h</td>
+                        <td>
+                          <span className={`badge ${absence.justifiee ? 'justifiee' : 'non-justifiee'}`}>
+                            {absence.justifiee ? 'Justifiée' : 'Non justifiée'}
+                          </span>
+                        </td>
+                        <td>{absence.motif || '-'}</td>
+                        <td className="actions">
+                          <button 
+                            className="edit-btn-small" 
+                            onClick={() => handleEditAbsence(absence)}
+                          >
+                            <FaEdit />
+                          </button>
+                          <button 
+                            className="delete-btn-small" 
+                            onClick={() => handleDeleteAbsence(absence._id)}
+                          >
+                            <FaTrash />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    ) : (
+      <div className="select-classe-message">
+        <FaUserGraduate size={48} />
+        <p>Veuillez sélectionner un niveau et un groupe pour gérer les notes et absences</p>
+      </div>
+    )}
+  </div>
+)}
+
+                      
+
         
         {activeTab === 'messages' && (
           <div className="section">

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from './api';
-import './styles/Login.css'
+import './styles/Login.css';
+import logo from './assets/images/School-Logo.png';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -31,6 +32,18 @@ const Login = () => {
       // Appel à l'API pour la connexion
       const response = await api.post('/auth/login', formData);
       
+      // Vérifier si la réponse contient les données attendues
+      if (!response.data || !response.data.user) {
+        setError('Réponse du serveur invalide');
+        return;
+      }
+      
+      // Vérifier si l'utilisateur est activé
+      if (response.data.user.actif === false) {
+        setError('Votre compte n\'est pas encore activé. Veuillez contacter l\'administrateur.');
+        return;
+      }
+      
       // Stocker le token et les informations utilisateur dans localStorage
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -39,12 +52,24 @@ const Login = () => {
       redirectBasedOnRole(response.data.user.role);
       
     } catch (err) {
-      setError(err.response?.data?.message || 'Identifiants incorrects');
+      console.error('Erreur de connexion:', err);
+      
+      // Gestion des différents types d'erreurs
+      if (err.response) {
+        // Le serveur a répondu avec un code d'erreur
+        setError(err.response.data?.message || `Erreur ${err.response.status}: ${err.response.statusText}`);
+      } else if (err.request) {
+        // La requête a été faite mais pas de réponse reçue
+        setError('Aucune réponse du serveur. Veuillez vérifier votre connexion internet.');
+      } else {
+        // Une erreur s'est produite lors de la configuration de la requête
+        setError('Erreur lors de la connexion: ' + err.message);
+      }
     } finally {
       setLoading(false);
     }
   };
-
+    
   // Fonction de redirection basée sur le rôle
   const redirectBasedOnRole = (role) => {
     switch (role) {
@@ -54,12 +79,12 @@ const Login = () => {
       case 'enseignant':
         navigate('/dashboard/enseignant');
         break;
-      /*case 'etudiant':
+      case 'etudiant':
         navigate('/dashboard/etudiant');
         break;
       case 'parent':
         navigate('/dashboard/parent');
-        break;*/
+        break;
       default:
         navigate('/');
         break;
@@ -68,6 +93,9 @@ const Login = () => {
 
   return (
     <div className="login-container">
+      <div className="site-logo">
+        <img src={logo} alt="Logo" className="logo" />
+      </div>
       <div className="login-form-container">
         <h2>Connexion</h2>
         

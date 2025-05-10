@@ -4,6 +4,8 @@ import { FaUsers, FaBook, FaCalendarAlt, FaEnvelope, FaEdit, FaTrash, FaPlus, Fa
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import '../styles/AdminDashboard.css';
+import { isTimeInSlot } from '../utils/timeUtils';
+
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('users');
@@ -13,6 +15,9 @@ const AdminDashboard = () => {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(true);
   // États pour la gestion des emplois du temps
+  const [userListType, setUserListType] = useState('enseignants');
+  const [filterNiveau, setFilterNiveau] = useState('');
+  const [filterGroupe, setFilterGroupe] = useState('');
   const [scheduleType, setScheduleType] = useState('classe');
   const [selectedNiveau, setSelectedNiveau] = useState('');
   const [selectedGroupe, setSelectedGroupe] = useState('');
@@ -158,28 +163,6 @@ const AdminDashboard = () => {
       }
     }
   };
-
-    // Fonction pour vérifier si un cours est dans un créneau horaire
-    const isTimeInSlot = (courseStart, courseEnd, slotStart, slotEnd) => {
-    // Convertir les heures en minutes pour faciliter la comparaison
-    const convertToMinutes = (time) => {
-      const [hours, minutes] = time.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-    
-    const courseStartMinutes = convertToMinutes(courseStart);
-    const courseEndMinutes = convertToMinutes(courseEnd);
-    const slotStartMinutes = convertToMinutes(slotStart);
-    const slotEndMinutes = convertToMinutes(slotEnd);
-    
-    // Un cours est dans un créneau si son début est dans le créneau
-    // ou si son créneau chevauche le créneau
-    return (
-      (courseStartMinutes >= slotStartMinutes && courseStartMinutes < slotEndMinutes) ||
-      (courseStartMinutes <= slotStartMinutes && courseEndMinutes > slotStartMinutes)
-    );
-    };
-  
   // Filtrer les emplois du temps en fonction des sélections
   const filteredSchedules = useMemo(() => {
     if (scheduleType === 'classe' && selectedNiveau && selectedGroupe) {
@@ -383,6 +366,104 @@ const fetchSchedules = async () => {
     }
   }, [activeTab, scheduleType, selectedNiveau, selectedGroupe, selectedEnseignant]);
   
+
+  const handleToggleStatus = async (userId, actif) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        `http://localhost:5001/api/auth/users/${userId}/toggle-status`,
+        { actif: !actif },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.status === 200) {
+        // Met à jour la liste des utilisateurs dans le state
+        setUsers(prevUsers => 
+          prevUsers.map(user => 
+            user._id === userId ? { ...user, actif: !actif } : user
+          )
+        );
+        toast.success(`Utilisateur ${!actif ? 'activé' : 'désactivé'} avec succès`);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la modification du statut:', error);
+      toast.error('Erreur lors de la modification du statut');
+    }
+  };
+  
+
+  // Fonction pour assigner un groupe à un étudiant
+// Fonction pour assigner un groupe à un étudiant
+const handleAssignGroup = async (userId, groupe) => {
+  try {
+    const token = localStorage.getItem('token');
+    console.log('Assigning group:', { userId, groupe }); // Log pour déboguer
+    
+    const response = await axios.put(
+      `http://localhost:5001/api/auth/users/${userId}/assign-group`,
+      { groupe },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+    
+    console.log('Response:', response.data); // Log pour déboguer
+    
+    if (response.status === 200) {
+      // Mettre à jour l'utilisateur dans la liste locale
+      setUsers(users.map(user => 
+        user._id === userId ? { ...user, groupe } : user
+      ));
+      
+      toast.success(`Groupe ${groupe} assigné avec succès`);
+    }
+  } catch (error) {
+    console.error('Erreur lors de l\'assignation du groupe:', error);
+    // Afficher plus de détails sur l'erreur
+    if (error.response) {
+      console.error('Réponse d\'erreur:', error.response.data);
+      toast.error(`Erreur: ${error.response.data.message || 'Erreur serveur'}`);
+    } else {
+      toast.error(`Erreur: ${error.message}`);
+    }
+  }
+};
+
+
+
+ // Filtrer les utilisateurs selon le type et les filtres
+const filteredUsers = useMemo(() => {
+  if (userListType === 'enseignants') {
+    return users.filter(user => user.role === 'enseignant');
+  } else if (userListType === 'etudiants') {
+    return users.filter(user => {
+      if (user.role !== 'etudiant') return false;
+      
+      // Appliquer les filtres de niveau et groupe si définis
+      if (filterNiveau && user.niveau !== filterNiveau) return false;
+      
+      if (filterGroupe) {
+        if (filterGroupe === 'null') {
+          // Filtrer les étudiants sans groupe
+          return !user.groupe;
+        } else if (user.groupe !== filterGroupe) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  } else if (userListType === 'parents') {
+    return users.filter(user => user.role === 'parent');
+  }
+  return [];
+}, [users, userListType, filterNiveau, filterGroupe]);
+
+
+
+  
   
 
   const handleLogout = () => {
@@ -437,53 +518,163 @@ const fetchSchedules = async () => {
         <ToastContainer position="top-right" autoClose={3000} />
         
         {activeTab === 'users' && (
-          <div className="section">
-            <div className="section-header">
-              <h2>Gestion des Utilisateurs</h2>
-            </div>
+  <div className="section">
+    <div className="section-header">
+      <h2>Gestion des Utilisateurs</h2>
+      <div className="user-filter-tabs">
+        <button 
+          className={`filter-tab ${userListType === 'enseignants' ? 'active' : ''}`}
+          onClick={() => setUserListType('enseignants')}
+        >
+          Enseignants
+        </button>
+        <button 
+          className={`filter-tab ${userListType === 'etudiants' ? 'active' : ''}`}
+          onClick={() => setUserListType('etudiants')}
+        >
+          Étudiants
+        </button>
+        <button 
+          className={`filter-tab ${userListType === 'parents' ? 'active' : ''}`}
+          onClick={() => setUserListType('parents')}
+        >
+          Parents
+        </button>
+      </div>
+    </div>
+    
+    {loading ? (
+      <div className="loading">Chargement...</div>
+    ) : (
+      <>
+        {userListType === 'etudiants' && (
+          <div className="student-filters">
+            <select 
+              value={filterNiveau} 
+              onChange={(e) => setFilterNiveau(e.target.value)}
+              className="filter-select"
+            >
+              <option value="">Tous les niveaux</option>
+              <option value="4ème">4ème</option>
+              <option value="3ème">3ème</option>
+              <option value="2ème">2ème</option>
+              <option value="1ère">1ère</option>
+              <option value="Terminale">Terminale</option>
+            </select>
             
-            {loading ? (
-              <div className="loading">Chargement...</div>
-            ) : (
-              <>
-                
-                <div className="table-container">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Rôle</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map(user => (
-                        <tr key={user._id}>
-                          <td>{user.username}</td>
-                          <td>{user.email}</td>
-                          <td>
-                            <span className={`role-badge ${user.role}`}>
-                              {user.role}
-                            </span>
-                          </td>
-                          <td className="actions">
-                            <button 
-                              className="delete-btn" 
-                              onClick={() => handleDeleteUser(user._id)}
-                            >
-                              <FaTrash />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
+            <select 
+              value={filterGroupe} 
+              onChange={(e) => setFilterGroupe(e.target.value)}
+              className="filter-select"
+            >
+              <option value="">Tous les groupes</option>
+              <option value="A">Groupe A</option>
+              <option value="B">Groupe B</option>
+              <option value="C">Groupe C</option>
+              <option value="D">Groupe D</option>
+              <option value="null">Sans groupe</option>
+            </select>
           </div>
         )}
+        
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                {userListType === 'etudiants' && (
+                  <>
+                    <th>Niveau</th>
+                    <th>Groupe</th>
+                  </>
+                )}
+                {userListType === 'enseignants' && (
+                  <th>Matières</th>
+                )}
+                {userListType === 'parents' && (
+                  <>
+                    <th>Nombre d'enfants</th>
+                    <th>Enfants</th>
+                  </>
+                )}
+                <th>Statut</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.map(user => (
+                <tr key={user._id}>
+                  <td>{user.username}</td>
+                  <td>{user.email}</td>
+                  {userListType === 'etudiants' && (
+                    <>
+                      <td>{user.niveau}</td>
+                      <td>
+                        {user.groupe ? (
+                          user.groupe
+                        ) : (
+                          <select
+                            className="assign-group-select"
+                            onChange={(e) => handleAssignGroup(user._id, e.target.value)}
+                            defaultValue=""
+                          >
+                            <option value="" disabled>Assigner un groupe</option>
+                            <option value="A">Groupe A</option>
+                            <option value="B">Groupe B</option>
+                            <option value="C">Groupe C</option>
+                            <option value="D">Groupe D</option>
+                          </select>
+                        )}
+                      </td>
+                    </>
+                  )}
+                  {userListType === 'enseignants' && (
+                    <td>{user.matieres}</td>
+                  )}
+                  {userListType === 'parents' && (
+                    <>
+                      <td>{user.nombreEnfants}</td>
+                      <td>
+                        {user.enfants && user.enfants.length > 0 
+                          ? user.enfants.map(enfant => enfant.username).join(', ') 
+                          : 'Aucun enfant'}
+                      </td>
+                    </>
+                  )}
+                  <td>
+                    <label className="switch">
+                      <input 
+                        type="checkbox" 
+                        checked={user.actif} 
+                        onChange={() => handleToggleStatus(user._id, user.actif)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                    <span className="status-text">{user.actif ? 'Actif' : 'Inactif'}</span>
+                  </td>
+                  <td className="actions">
+                    <button 
+                      className="delete-btn" 
+                      onClick={() => handleDeleteUser(user._id)}
+                      title="Supprimer l'utilisateur"
+                    >
+                      <FaTrash />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )}
+  </div>
+)}
+
+
+
+
         
         {activeTab === 'courses' && (
   <div className="section">
@@ -497,6 +688,7 @@ const fetchSchedules = async () => {
           <tr>
             <th>Titre</th>
             <th>Description</th>
+            <th>Matière</th>
             <th>Niveau</th>
             <th>Enseignant</th>
             <th>Document</th>
@@ -507,6 +699,7 @@ const fetchSchedules = async () => {
             <tr key={course._id}>
               <td>{course.title}</td>
               <td>{course.description}</td>
+              <td>{course.matiere}</td>
               <td>{course.niveau || 'Non spécifié'}</td>
               <td>{course.enseignant ? course.enseignant : 'Non assigné'}</td>
               <td>
@@ -557,7 +750,7 @@ const fetchSchedules = async () => {
               <option value="">Sélectionner un niveau</option>
               <option value="4ème">4ème</option>
               <option value="3ème">3ème</option>
-              <option value="2nde">2nde</option>
+              <option value="2ème">2ème</option>
               <option value="1ère">1ère</option>
               <option value="Terminale">Terminale</option>
             </select>
@@ -693,7 +886,7 @@ const fetchSchedules = async () => {
                     <option value="">Niveau</option>
                     <option value="4ème">4ème</option>
                     <option value="3ème">3ème</option>
-                    <option value="2nde">2nde</option>
+                    <option value="2ème">2ème</option>
                     <option value="1ère">1ère</option>
                     <option value="Terminale">Terminale</option>
                   </select>

@@ -8,7 +8,11 @@ password: { type: String, required: true, unique: true, minlength: [6, 'le mot d
 role: { type: String, enum: ['admin', 'enseignant','etudiant','parent'], default: 'etudiant' },
 image: {type: String, required: function(){return this.role === 'etudiant'|| this.role === 'enseignant';}},
 niveau:{type: String, required: function(){return this.role === 'etudiant';}},
-groupe:{type: String, required: function(){return this.role === 'etudiant';}},
+groupe: {
+  type: String,
+  required: false,
+},
+
 matieres:{type: String, required: function(){return this.role === 'enseignant';}},
 nombreEnfants:{type: Number, required: function(){return this.role === 'parent';}, min:[1, 'Un parent doit avoir au moins un enfant']},
 enfants: {
@@ -46,7 +50,7 @@ enfants: {
   },
   actif: {
     type: Boolean,
-    default: true
+    default: false
   }
 });
 
