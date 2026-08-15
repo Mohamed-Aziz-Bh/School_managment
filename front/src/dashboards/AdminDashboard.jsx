@@ -490,12 +490,6 @@ const filteredUsers = useMemo(() => {
             <FaUsers className="icon" /> Utilisateurs
           </li>
           <li 
-            className={activeTab === 'courses' ? 'active' : ''} 
-            onClick={() => setActiveTab('courses')}
-          >
-            <FaBook className="icon" /> Cours
-          </li>
-          <li 
             className={activeTab === 'schedules' ? 'active' : ''} 
             onClick={() => setActiveTab('schedules')}
           >
@@ -671,60 +665,6 @@ const filteredUsers = useMemo(() => {
     )}
   </div>
 )}
-
-
-
-
-        
-        {activeTab === 'courses' && (
-  <div className="section">
-    <div className="section-header">
-      <h2>Liste des Cours</h2>
-    </div>
-    
-    <div className="table-container">
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Titre</th>
-            <th>Description</th>
-            <th>Matière</th>
-            <th>Niveau</th>
-            <th>Enseignant</th>
-            <th>Document</th>
-          </tr>
-        </thead>
-        <tbody>
-          {courses.map(course => (
-            <tr key={course._id}>
-              <td>{course.title}</td>
-              <td>{course.description}</td>
-              <td>{course.matiere}</td>
-              <td>{course.niveau || 'Non spécifié'}</td>
-              <td>{course.enseignant ? course.enseignant : 'Non assigné'}</td>
-              <td>
-                 {course.file ? (
-                   <a
-                      href={`http://localhost:5001/uploads/cours/${course.file.path.split('\\').pop().split('/').pop()}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="view-file-btn"
-                   >
-                     <FaFilePdf /> {course.file.name || 'Voir document'}
-                   </a>
-                  ) : (
-                    'Aucun document'
-                  )}
-              </td>
-
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </div>
-)}
-
 
 {activeTab === 'schedules' && (
   <div className="section">

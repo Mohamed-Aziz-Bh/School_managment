@@ -109,7 +109,7 @@ const Register = () => {
       const response = await axios.post('http://localhost:5001/api/auth/register', dataToSend);
       
       // Redirection vers la page de connexion après inscription réussie
-      alert('Inscription réussie! Vous pouvez maintenant vous connecter.');
+      alert('Inscription réussie! Attendez un email d`activation pour vous connecter.');
       navigate('/login');
     } catch (err) {
       setError(err.response?.data?.message || 'Une erreur est survenue lors de l\'inscription');

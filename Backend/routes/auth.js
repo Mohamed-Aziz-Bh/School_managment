@@ -2,8 +2,16 @@ const express = require('express');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 const router = express.Router();
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS 
+  }
+});
 // Register
 router.post('/register', async (req, res) => {
 try {
@@ -175,20 +183,52 @@ router.put('/users/:id/toggle-status', async (req, res) => {
         return res.status(404).json({ message: 'Utilisateur non trouvé' });
       }
       
+      // Vérifier si le statut change réellement
+      const statusChanged = user.actif !== actif;
+      
       // Mettre à jour le statut de l'utilisateur
       user.actif = actif;
       await user.save();
       
+      // Envoyer un email si l'utilisateur est activé et le statut a changé
+      if (actif && statusChanged) {
+        try {
+          const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: 'Activation de votre compte - École',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #2c3e50;">Activation de votre compte</h2>
+                <p>Bonjour <strong>${user.username}</strong>,</p>
+                <p>Nous avons le plaisir de vous informer que votre compte a été <strong style="color: #27ae60;">activé</strong> par l'administration.</p>
+                <p>Vous pouvez maintenant accéder à la plateforme avec vos identifiants définis lors de l'inscription</p>
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                  <p style="margin: 0;"><strong>Connectez-vous dès maintenant pour accéder à tous les services de l'établissement.</strong></p>
+                </div>
+                <p>Si vous avez des questions, n'hésitez pas à contacter l'administration.</p>
+                <p>Cordialement,<br>L'équipe de l'établissement</p>
+              </div>
+            `
+          };
+
+          await transporter.sendMail(mailOptions);
+          console.log(`Email d'activation envoyé à ${user.email}`);
+        } catch (emailError) {
+          console.error('Erreur lors de l\'envoi de l\'email:', emailError);
+          // Ne pas faire échouer la requête si l'email ne peut pas être envoyé
+        }
+      }
+      
       res.status(200).json({ 
-        message: `Utilisateur ${actif ? 'activé' : 'désactivé'} avec succès`, 
+        message: `Utilisateur ${actif ? 'activé' : 'désactivé'} avec succès${actif && statusChanged ? ' - Email de notification envoyé' : ''}`, 
         user 
       });
     } catch (err) {
       console.error('Erreur lors de la modification du statut:', err);
       res.status(500).json({ message: err.message || 'Erreur serveur' });
     }
-  });
-  
+});
 
   // Route pour assigner un groupe à un étudiant (admin seulement)
 router.put('/users/:id/assign-group', async (req, res) => {
@@ -243,28 +283,33 @@ router.get('/verify', (req, res) => {
 
 // GET: Récupérer les informations d'un étudiant par son nom d'utilisateur
 router.get('/student/:username', async (req, res) => {
-    try {
-      const student = await User.findOne({ 
-        username: req.params.username,
-        role: 'etudiant'
-      });
-      
-      if (!student) {
-        return res.status(404).json({ message: 'Étudiant non trouvé' });
-      }
-      
-      res.json({
-        _id: student._id,
-        username: student.username,
-        email: student.email,
-        niveau: student.niveau,
-        groupe: student.groupe,
-        image: student.image
-      });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
+  try {
+    const student = await User.findOne({
+      username: req.params.username,
+      role: 'etudiant'
+    });
+    
+    if (!student) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
     }
-  });
+    
+    // Return all necessary fields that the frontend needs
+    res.json({
+      _id: student._id,
+      username: student.username,
+      email: student.email,
+      niveau: student.niveau,
+      groupe: student.groupe,
+      image: student.image || null,
+      role: student.role,
+      actif: student.actif
+    });
+  } catch (err) {
+    console.error('Error fetching student:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
   
   
   

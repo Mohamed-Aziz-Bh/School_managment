@@ -143,7 +143,7 @@ const fetchSchedule = async (etudiantId, niveau, groupe) => {
 const fetchEnfantData = async (username) => {
     try {
       // Récupérer les informations de l'étudiant
-      const response = await api.get(`/auth/student/${username}`);
+      const response = await api.get(`/auth/users/${username}`);
       const etudiantId = response.data._id;
       const niveau = response.data.niveau;
       const groupe = response.data.groupe;
