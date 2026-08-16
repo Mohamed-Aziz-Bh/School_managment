@@ -1,14 +1,14 @@
 /* Styles généraux */
 :root {
-    --primary-color: #4a90e2;
-    --secondary-color: #5cb85c;
-    --accent-color: #f0ad4e;
-    --dark-color: #333;
+    --primary-color: #4f46e5;
+    --secondary-color: #10b981;
+    --accent-color: #f59e0b;
+    --dark-color: #0f172a;
     --light-color: #f8f9fa;
     --text-color: #333;
     --text-light: #6c757d;
     --border-color: #ddd;
-    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
     --transition: all 0.3s ease;
   }
   

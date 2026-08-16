@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { FaUsers, FaBook, FaCalendarAlt, FaEnvelope, FaEdit, FaTrash, FaPlus, FaFilePdf } from 'react-icons/fa';
+import { FaUsers, FaBook, FaCalendarAlt, FaEnvelope, FaEdit, FaTrash, FaPlus, FaFilePdf, FaClipboardList, FaUserClock } from 'react-icons/fa';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import '../styles/AdminDashboard.css';
@@ -12,8 +12,14 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [absences, setAbsences] = useState([]);
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(true);
+  const [filterNoteNiveau, setFilterNoteNiveau] = useState('');
+  const [filterNoteGroupe, setFilterNoteGroupe] = useState('');
+  const [filterAbsenceNiveau, setFilterAbsenceNiveau] = useState('');
+  const [filterAbsenceGroupe, setFilterAbsenceGroupe] = useState('');
   // États pour la gestion des emplois du temps
   const [userListType, setUserListType] = useState('enseignants');
   const [filterNiveau, setFilterNiveau] = useState('');
@@ -58,7 +64,35 @@ const AdminDashboard = () => {
     fetchCourses();
     fetchSchedules();
     fetchMessages();
+    fetchNotes();
+    fetchAbsences();
   }, []);
+
+  const fetchNotes = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5001/api/notes', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotes(response.data);
+    } catch (error) {
+      console.error('Error fetching notes:', error);
+      toast.error('Erreur lors du chargement des notes');
+    }
+  };
+
+  const fetchAbsences = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5001/api/absences', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAbsences(response.data);
+    } catch (error) {
+      console.error('Error fetching absences:', error);
+      toast.error('Erreur lors du chargement des absences');
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -490,10 +524,28 @@ const filteredUsers = useMemo(() => {
             <FaUsers className="icon" /> Utilisateurs
           </li>
           <li 
+            className={activeTab === 'courses' ? 'active' : ''} 
+            onClick={() => setActiveTab('courses')}
+          >
+            <FaBook className="icon" /> Cours
+          </li>
+          <li 
             className={activeTab === 'schedules' ? 'active' : ''} 
             onClick={() => setActiveTab('schedules')}
           >
             <FaCalendarAlt className="icon" /> Emplois du temps
+          </li>
+          <li 
+            className={activeTab === 'notes' ? 'active' : ''} 
+            onClick={() => setActiveTab('notes')}
+          >
+            <FaClipboardList className="icon" /> Notes
+          </li>
+          <li 
+            className={activeTab === 'absences' ? 'active' : ''} 
+            onClick={() => setActiveTab('absences')}
+          >
+            <FaUserClock className="icon" /> Absences
           </li>
           <li 
             className={activeTab === 'messages' ? 'active' : ''} 
@@ -665,6 +717,60 @@ const filteredUsers = useMemo(() => {
     )}
   </div>
 )}
+
+
+
+
+        
+        {activeTab === 'courses' && (
+  <div className="section">
+    <div className="section-header">
+      <h2>Liste des Cours</h2>
+    </div>
+    
+    <div className="table-container">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Titre</th>
+            <th>Description</th>
+            <th>Matière</th>
+            <th>Niveau</th>
+            <th>Enseignant</th>
+            <th>Document</th>
+          </tr>
+        </thead>
+        <tbody>
+          {courses.map(course => (
+            <tr key={course._id}>
+              <td>{course.title}</td>
+              <td>{course.description}</td>
+              <td>{course.matiere}</td>
+              <td>{course.niveau || 'Non spécifié'}</td>
+              <td>{course.enseignant ? course.enseignant : 'Non assigné'}</td>
+              <td>
+                 {course.file ? (
+                   <a
+                      href={`http://localhost:5001/uploads/cours/${course.file.path.split('\\').pop().split('/').pop()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="view-file-btn"
+                   >
+                     <FaFilePdf /> {course.file.name || 'Voir document'}
+                   </a>
+                  ) : (
+                    'Aucun document'
+                  )}
+              </td>
+
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
+
 
 {activeTab === 'schedules' && (
   <div className="section">
@@ -1016,6 +1122,164 @@ const filteredUsers = useMemo(() => {
   </div>
 )}
 
+
+{activeTab === 'notes' && (
+  <div className="section">
+    <div className="section-header">
+      <h2>Notes de tous les élèves</h2>
+    </div>
+    <div className="student-filters">
+      <select
+        value={filterNoteNiveau}
+        onChange={(e) => setFilterNoteNiveau(e.target.value)}
+        className="filter-select"
+      >
+        <option value="">Tous les niveaux</option>
+        <option value="4ème">4ème</option>
+        <option value="3ème">3ème</option>
+        <option value="2ème">2ème</option>
+        <option value="1ère">1ère</option>
+        <option value="Terminale">Terminale</option>
+      </select>
+      <select
+        value={filterNoteGroupe}
+        onChange={(e) => setFilterNoteGroupe(e.target.value)}
+        className="filter-select"
+      >
+        <option value="">Tous les groupes</option>
+        <option value="A">Groupe A</option>
+        <option value="B">Groupe B</option>
+        <option value="C">Groupe C</option>
+        <option value="D">Groupe D</option>
+      </select>
+    </div>
+    <div className="table-container">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Élève</th>
+            <th>Niveau</th>
+            <th>Groupe</th>
+            <th>Matière</th>
+            <th>Titre</th>
+            <th>Type</th>
+            <th>Note</th>
+            <th>Enseignant</th>
+            <th>Date</th>
+            <th>Commentaire</th>
+          </tr>
+        </thead>
+        <tbody>
+          {notes
+            .filter(note => {
+              if (filterNoteNiveau && note.niveau !== filterNoteNiveau) return false;
+              if (filterNoteGroupe && note.groupe !== filterNoteGroupe) return false;
+              return true;
+            })
+            .map(note => (
+              <tr key={note._id}>
+                <td>{note.etudiant?.username || '—'}</td>
+                <td>{note.niveau}</td>
+                <td>{note.groupe}</td>
+                <td>{note.matiere}</td>
+                <td>{note.titre}</td>
+                <td><span className="badge-type">{note.type}</span></td>
+                <td>
+                  <span className={`note-value ${note.valeur >= 10 ? 'note-ok' : 'note-ko'}`}>
+                    {note.valeur}/20
+                  </span>
+                </td>
+                <td>{note.enseignant?.username || '—'}</td>
+                <td>{note.date ? new Date(note.date).toLocaleDateString('fr-FR') : '—'}</td>
+                <td>{note.commentaire || '—'}</td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+      {notes.length === 0 && (
+        <div className="no-messages">Aucune note disponible</div>
+      )}
+    </div>
+  </div>
+)}
+
+{activeTab === 'absences' && (
+  <div className="section">
+    <div className="section-header">
+      <h2>Absences de tous les élèves</h2>
+    </div>
+    <div className="student-filters">
+      <select
+        value={filterAbsenceNiveau}
+        onChange={(e) => setFilterAbsenceNiveau(e.target.value)}
+        className="filter-select"
+      >
+        <option value="">Tous les niveaux</option>
+        <option value="4ème">4ème</option>
+        <option value="3ème">3ème</option>
+        <option value="2ème">2ème</option>
+        <option value="1ère">1ère</option>
+        <option value="Terminale">Terminale</option>
+      </select>
+      <select
+        value={filterAbsenceGroupe}
+        onChange={(e) => setFilterAbsenceGroupe(e.target.value)}
+        className="filter-select"
+      >
+        <option value="">Tous les groupes</option>
+        <option value="A">Groupe A</option>
+        <option value="B">Groupe B</option>
+        <option value="C">Groupe C</option>
+        <option value="D">Groupe D</option>
+      </select>
+    </div>
+    <div className="table-container">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Élève</th>
+            <th>Niveau</th>
+            <th>Groupe</th>
+            <th>Matière</th>
+            <th>Date</th>
+            <th>Durée (h)</th>
+            <th>Justifiée</th>
+            <th>Motif</th>
+            <th>Enseignant</th>
+          </tr>
+        </thead>
+        <tbody>
+          {absences
+            .filter(absence => {
+              if (filterAbsenceNiveau && absence.niveau !== filterAbsenceNiveau) return false;
+              if (filterAbsenceGroupe && absence.groupe !== filterAbsenceGroupe) return false;
+              return true;
+            })
+            .map(absence => (
+              <tr key={absence._id}>
+                <td>{absence.etudiant?.username || '—'}</td>
+                <td>{absence.niveau}</td>
+                <td>{absence.groupe}</td>
+                <td>{absence.matiere}</td>
+                <td>{absence.date ? new Date(absence.date).toLocaleDateString('fr-FR') : '—'}</td>
+                <td>{absence.duree}</td>
+                <td>
+                  <span className={`status-badge ${absence.justifiee ? 'justifiee' : 'non-justifiee'}`}>
+                    {absence.justifiee ? 'Oui' : 'Non'}
+                  </span>
+                </td>
+                <td>{absence.motif || '—'}</td>
+                <td>{absence.enseignant?.username || '—'}</td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+      {absences.length === 0 && (
+        <div className="no-messages">Aucune absence disponible</div>
+      )}
+    </div>
+  </div>
+)}
 
 {activeTab === 'messages' && (
   <div className="section">

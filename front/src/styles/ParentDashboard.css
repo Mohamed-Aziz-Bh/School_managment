@@ -1,12 +1,12 @@
 .parent-dashboard {
     display: flex;
     min-height: 100vh;
-    background-color: #f5f7fa;
+    background: #f1f5f9;
   }
   
   .sidebar {
     width: 250px;
-    background-color: #2c3e50;
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
     color: white;
     padding: 20px 0;
     display: flex;
@@ -27,7 +27,7 @@
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background-color: #3498db;
+    background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -66,7 +66,7 @@
   }
   
   .nav-links li.active {
-    background-color: #3498db;
+    background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
     border-left: 4px solid #f1c40f;
   }
   
@@ -99,8 +99,8 @@
   
   .section {
     background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06); border: 1px solid #e2e8f0;
     padding: 20px;
     margin-bottom: 20px;
   }
@@ -116,7 +116,7 @@
   
   .section-header h2 {
     margin: 0;
-    color: #2c3e50;
+    color: #1e293b;
   }
   
   .loading-container, .error-container {
@@ -129,9 +129,9 @@
   
   .loading, .error {
     padding: 20px;
-    border-radius: 8px;
+    border-radius: 12px;
     background-color: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06); border: 1px solid #e2e8f0;
   }
   
   .error {
@@ -153,14 +153,14 @@
   .profile-info {
     background-color: #f8f9fa;
     padding: 20px;
-    border-radius: 8px;
+    border-radius: 12px;
   }
   
   .profile-avatar {
     width: 100px;
     height: 100px;
     border-radius: 50%;
-    background-color: #3498db;
+    background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -185,7 +185,7 @@
   
   .info-value {
     font-size: 16px;
-    color: #2c3e50;
+    color: #1e293b;
   }
   
   .role-badge {
@@ -205,7 +205,7 @@
   .profile-form h3 {
     margin-top: 0;
     margin-bottom: 20px;
-    color: #2c3e50;
+    color: #1e293b;
   }
   
   .form-group {
@@ -228,7 +228,7 @@
   }
   
   .submit-btn {
-    background-color: #3498db;
+    background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
     color: white;
     border: none;
     padding: 10px 15px;
@@ -274,7 +274,7 @@
   
   .enfant-card {
     background-color: #f8f9fa;
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 20px;
     display: flex;
     align-items: center;
@@ -291,7 +291,7 @@
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background-color: #3498db;
+    background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -310,11 +310,11 @@
   
   .enfant-info h3 {
     margin: 0 0 10px;
-    color: #2c3e50;
+    color: #1e293b;
   }
   
   .view-btn {
-    background-color: #3498db;
+    background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
     color: white;
     border: none;
     padding: 8px 12px;
@@ -357,7 +357,7 @@
   
   .stat-card {
     background-color: #f8f9fa;
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 15px;
     text-align: center;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
@@ -372,7 +372,7 @@
   .stat-value {
     font-size: 24px;
     font-weight: bold;
-    color: #2c3e50;
+    color: #1e293b;
   }
   
   .table-container {
@@ -409,7 +409,7 @@
   }
   
   .devoir {
-    background-color: #3498db;
+    background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
     color: white;
   }
   
@@ -451,7 +451,7 @@
   
   .message-card {
     background-color: #f8f9fa;
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 15px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
   }
@@ -466,14 +466,14 @@
   .message-title {
     font-size: 18px;
     font-weight: bold;
-    color: #2c3e50;
+    color: #1e293b;
   }
   
   .message-type {
     font-size: 12px;
     padding: 5px 10px;
     border-radius: 20px;
-    background-color: #3498db;
+    background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
     color: white;
     text-transform: uppercase;
   }
@@ -483,7 +483,7 @@
   }
   
   .message-type.announcement {
-    background-color: #3498db;
+    background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
   }
   
   .message-type.event {
@@ -502,7 +502,7 @@
   .message-content {
     margin: 10px 0;
     line-height: 1.5;
-    color: #2c3e50;
+    color: #1e293b;
   }
   
   .message-date {
@@ -530,7 +530,7 @@
 
   /* Styles pour le bouton de modification */
 .edit-profile-btn {
-    background-color: #3498db;
+    background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
     color: white;
     border: none;
     padding: 10px 15px;
@@ -563,7 +563,7 @@
   
   .profile-form-content {
     background-color: white;
-    border-radius: 8px;
+    border-radius: 12px;
     width: 90%;
     max-width: 500px;
     max-height: 90vh;
@@ -618,7 +618,7 @@
   }
   
   .course-card {
-    background-color: #3498db;
+    background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
     color: white;
     border-radius: 4px;
     padding: 8px;

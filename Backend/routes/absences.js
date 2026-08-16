@@ -12,6 +12,27 @@ const isEnseignant = (req, res, next) => {
   next();
 };
 
+// Middleware pour vérifier si l'utilisateur est admin
+const isAdmin = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Accès refusé: administrateur uniquement' });
+  }
+  next();
+};
+
+// Récupérer toutes les absences (admin)
+router.get('/', auth, isAdmin, async (req, res) => {
+  try {
+    const absences = await Absence.find()
+      .populate('etudiant', 'username niveau groupe email')
+      .populate('enseignant', 'username')
+      .sort({ date: -1 });
+    res.json(absences);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Récupérer toutes les absences d'un enseignant
 router.get('/enseignant/:enseignantId', auth, async (req, res) => {
   try {
